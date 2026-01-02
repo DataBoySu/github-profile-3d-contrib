@@ -6,6 +6,15 @@ import * as f from './file-writer';
 import * as r from './settings-reader';
 import * as client from './github-graphql';
 
+const parseDateFromEnv = (value: string, label: string): Date | null => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        core.setFailed(`${label} is invalid`);
+        return null;
+    }
+    return date;
+};
+
 export const main = async (): Promise<void> => {
     try {
         const token = process.env.GITHUB_TOKEN;
@@ -32,11 +41,53 @@ export const main = async (): Promise<void> => {
             return;
         }
 
+        const calendarStartEnv = process.env.CALENDAR_START_DATE;
+        const calendarEndEnv = process.env.CALENDAR_END_DATE;
+        let calendarRange: client.CalendarRangeArgs | undefined;
+
+        if (calendarStartEnv) {
+            const startDate = parseDateFromEnv(
+                calendarStartEnv,
+                'CALENDAR_START_DATE',
+            );
+            if (!startDate) {
+                return;
+            }
+            const endDate = calendarEndEnv
+                ? parseDateFromEnv(
+                      calendarEndEnv,
+                      'CALENDAR_END_DATE',
+                  )
+                : new Date();
+            if (!endDate) {
+                return;
+            }
+            if (startDate > endDate) {
+                core.setFailed(
+                    'CALENDAR_START_DATE must be on or before CALENDAR_END_DATE',
+                );
+                return;
+            }
+            calendarRange = {
+                from: startDate.toISOString(),
+                to: endDate.toISOString(),
+            };
+        } else if (year !== null) {
+            const startOfYear = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+            const endOfYear = new Date(
+                Date.UTC(year, 11, 31, 23, 59, 59),
+            );
+            calendarRange = {
+                from: startOfYear.toISOString(),
+                to: endOfYear.toISOString(),
+            };
+        }
+
         const response = await client.fetchData(
             token,
             userName,
             maxRepos,
-            year,
+            calendarRange,
         );
         const userInfo = aggregate.aggregateUserInfo(response);
 

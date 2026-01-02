@@ -5,6 +5,28 @@ export const URL =
     process.env.GITHUB_ENDPOINT || 'https://api.github.com/graphql';
 const maxReposOneQuery = 100;
 
+export interface CalendarRangeArgs {
+    from?: string;
+    to?: string;
+}
+
+const buildCalendarArgs = (range?: CalendarRangeArgs): string => {
+    if (!range) {
+        return '';
+    }
+    const args: string[] = [];
+    if (range.from) {
+        args.push(`from:"${range.from}"`);
+    }
+    if (range.to) {
+        args.push(`to:"${range.to}"`);
+    }
+    if (args.length === 0) {
+        return '';
+    }
+    return `(${args.join(', ')})`;
+};
+
 export type CommitContributionsByRepository = Array<{
     contributions: {
         totalCount: number;
@@ -83,11 +105,9 @@ export type ResponseNextType = {
 export const fetchFirst = async (
     token: string,
     userName: string,
-    year: number | null = null,
+    calendarRange?: CalendarRangeArgs,
 ): Promise<ResponseType> => {
-    const yearArgs = year
-        ? `(from:"${year}-01-01T00:00:00.000Z", to:"${year}-12-31T23:59:59.000Z")`
-        : '';
+    const calendarArgs = buildCalendarArgs(calendarRange);
     const headers = {
         Authorization: `bearer ${token}`,
     };
@@ -95,7 +115,7 @@ export const fetchFirst = async (
         query: `
             query($login: String!) {
                 user(login: $login) {
-                    contributionsCollection${yearArgs} {
+                    contributionsCollection${calendarArgs} {
                         contributionCalendar {
                             isHalloween
                             totalContributions
@@ -185,9 +205,9 @@ export const fetchData = async (
     token: string,
     userName: string,
     maxRepos: number,
-    year: number | null = null,
+    calendarRange?: CalendarRangeArgs,
 ): Promise<ResponseType> => {
-    const res1 = await fetchFirst(token, userName, year);
+    const res1 = await fetchFirst(token, userName, calendarRange);
     const result = res1.data;
 
     if (result && result.user.repositories.nodes.length === maxReposOneQuery) {
