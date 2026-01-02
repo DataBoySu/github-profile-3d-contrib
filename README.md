@@ -111,7 +111,7 @@ If you want to store the generated SVGs somewhere other than the repository root
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USERNAME: ${{ github.repository_owner }}
-          #Optional commands
+        #   Additional Optional commands
         #   OUTPUT_PATH: profile-3d-contrib/
         #   CALENDAR_START_DATE: 2024-02-01
         #   CALENDAR_END_DATE: 2025-01-31
